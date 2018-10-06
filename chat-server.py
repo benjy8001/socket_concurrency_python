@@ -5,6 +5,7 @@ from socket import (
     SOL_SOCKET,
     SO_REUSEADDR
 )
+from threading import Thread
 
 conn_sockets = []
 
@@ -41,7 +42,8 @@ def server_sock_manager():
     s = create_server_sock()
     while True:
         conn_s, addr = s.accept()
-        conn_sock_manager(conn_s)
+        t = Thread(target=conn_sock_manager, args=(conn_s,))
+        t.start()
 
 
 server_sock_manager()
