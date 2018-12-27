@@ -5,9 +5,9 @@ from socket import (
     SOL_SOCKET,
     SO_REUSEADDR
 )
+from select import select
 
 conn_sockets = []
-
 
 def send_line(sender, line):
     for recv_s in conn_sockets:
@@ -21,27 +21,29 @@ def create_server_sock():
     s.listen(0)
     return s
 
-
-def conn_sock_manager(conn_s):
-    conn_sockets.append(conn_s)
+def conn_sock_readline(conn_s):
     line = b''
     while True:
         c = conn_s.recv(1)
         if c == b'':
+            conn_s.close()
+            conn_sockets.remove(conn_s)
             break
-        line += c
+        line += conn_s
         if c == b'\n':
             send_line(conn_s, line)
-            line = b''
-    conn_s.close()
-    conn_sockets.remove(conn_s)
+            break
 
-
-def server_sock_manager():
-    s = create_server_sock()
+def main():
+    server_sock = create_server_sock()
     while True:
-        conn_s, addr = s.accept()
-        conn_sock_manager(conn_s)
+        fds = tuple(conn_sockets) + (server_sock,)
+        r, w, e = select(fds, [], [])
+        fd = r[0]
+        if fd == server_sock:
+            conn_s, addr = server_sock.accept()
+            conn_sockets.append(conn_s)
+        else:
+            conn_sock_readline(fd)
 
-
-server_sock_manager()
+main()
